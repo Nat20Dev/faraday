@@ -15,6 +15,12 @@ export default function NavBar() {
           >
             Dashboard
           </Link>
+          <Link
+            href="/teams"
+            className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
+          >
+            Teams
+          </Link>
           <ThemeToggle />
         </div>
       </nav>

@@ -73,3 +73,18 @@ export const SOURCE_LABELS: Record<string, string> = {
   EVENT: "Event",
   CAMPAIGN: "Campaign",
 };
+
+export interface Team {
+  id: number;
+  name: string;
+  email: string | null;
+  address: string | null;
+  source: "MANUAL_ENTRY" | "EVENT" | "CAMPAIGN";
+  created_at: string;
+  updated_at: string;
+  social_links: SocialLink[];
+  tags: Tag[];
+  notes: Note[];
+  members: number[];
+  member_count: number;
+}
