@@ -44,6 +44,7 @@ export interface Creator {
   social_links: SocialLink[];
   tags?: Tag[];
   notes?: Note[];
+  teams?: { id: number; name: string }[];
 }
 
 export const PLATFORM_EMOJIS: Record<string, string> = {

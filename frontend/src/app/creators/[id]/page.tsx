@@ -1,6 +1,10 @@
+"use client";
+
+import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { ArrowLeft, Pencil, ExternalLink } from "lucide-react";
 import DeleteButton from "@/components/creators/DeleteButton";
+import NoteList from "@/components/NoteList";
 import type { Creator } from "@/types/creator";
 import { SOURCE_LABELS, SOURCE_STYLES, PLATFORM_EMOJIS } from "@/types/creator";
 
@@ -17,33 +21,77 @@ function timeAgo(dateStr: string): string {
   return `${months}mo ago`;
 }
 
-async function getCreator(id: string): Promise<Creator> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/creators/${id}/`, {
-    cache: "no-store",
-  });
-  if (!res.ok) throw new Error("Not found");
-  return res.json();
-}
+export default function CreatorDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const [creator, setCreator] = useState<Creator | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-export default async function CreatorDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  useEffect(() => {
+    fetch(`/api/creators/${id}/`, { cache: "no-store" })
+      .then((res) => {
+        if (!res.ok) throw new Error("Not found");
+        return res.json();
+      })
+      .then((data) => {
+        setCreator(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError("Creator not found.");
+        setLoading(false);
+      });
+  }, [id]);
 
-  let creator: Creator | null = null;
-  let error: string | null = null;
-
-  try {
-    creator = await getCreator(id);
-  } catch {
-    error = "Creator not found.";
+  async function handleAddNote(content: string) {
+    const res = await fetch(`/api/creators/${id}/notes/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+    });
+    if (!res.ok) throw new Error("Failed to add note");
+    const note = await res.json();
+    setCreator((prev) => (prev ? { ...prev, notes: [...(prev.notes || []), note] } : prev));
   }
 
-  if (error || !creator) {
+  async function handleEditNote(noteId: number, content: string) {
+    const res = await fetch(`/api/creators/${id}/notes/${noteId}/`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+    });
+    if (!res.ok) throw new Error("Failed to edit note");
+    const updated = await res.json();
+    setCreator((prev) =>
+      prev ? { ...prev, notes: (prev.notes || []).map((n) => (n.id === noteId ? updated : n)) } : prev
+    );
+  }
+
+  async function handleDeleteNote(noteId: number) {
+    const res = await fetch(`/api/creators/${id}/notes/${noteId}/`, {
+      method: "DELETE",
+    });
+    if (!res.ok) throw new Error("Failed to delete note");
+    setCreator((prev) =>
+      prev ? { ...prev, notes: (prev.notes || []).filter((n) => n.id !== noteId) } : prev
+    );
+  }
+
+  if (error) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16 text-center">
         <p className="text-zinc-500 dark:text-zinc-400">{error}</p>
         <Link href="/dashboard" className="mt-4 inline-block text-sm text-emerald-600 dark:text-emerald-400 hover:underline">
           ← Back to Dashboard
         </Link>
+      </div>
+    );
+  }
+
+  if (loading || !creator) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16 text-center">
+        <p className="text-zinc-500 dark:text-zinc-400">Loading...</p>
       </div>
     );
   }
@@ -115,6 +163,23 @@ export default async function CreatorDetailPage({ params }: { params: Promise<{ 
           </dl>
         </div>
 
+        <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 p-5">
+          <h2 className="text-sm font-semibold mb-3">Teams</h2>
+          {creator.teams && creator.teams.length > 0 ? (
+            <ul className="space-y-2">
+              {creator.teams.map((team) => (
+                <li key={team.id}>
+                  <Link href={`/teams/${team.id}`} className="text-sm text-emerald-600 dark:text-emerald-400 hover:underline">
+                    {team.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">Not part of any teams.</p>
+          )}
+        </div>
+
         <div className="flex flex-col gap-6">
           <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 p-5">
             <h2 className="text-sm font-semibold mb-3">Social Links</h2>
@@ -151,23 +216,12 @@ export default async function CreatorDetailPage({ params }: { params: Promise<{ 
             )}
           </div>
 
-          <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 p-5">
-            <h2 className="text-sm font-semibold mb-3">Notes ({creator.notes?.length || 0})</h2>
-            {creator.notes && creator.notes.length === 0 ? (
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">No notes yet.</p>
-            ) : (
-              <ul className="space-y-3">
-                {creator.notes?.map((note) => (
-                  <li key={note.id} className="text-sm border-b border-zinc-100 dark:border-zinc-800 last:border-0 pb-3 last:pb-0">
-                    <p className="text-zinc-700 dark:text-zinc-300">{note.content}</p>
-                    <p className="mt-1 text-xs text-zinc-400" title={new Date(note.created_at).toLocaleString()}>
-                      {timeAgo(note.created_at)}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <NoteList
+            notes={creator.notes || []}
+            onAdd={handleAddNote}
+            onEdit={handleEditNote}
+            onDelete={handleDeleteNote}
+          />
         </div>
       </div>
     </div>

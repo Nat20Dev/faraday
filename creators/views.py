@@ -105,12 +105,19 @@ class CreatorViewSet(viewsets.ModelViewSet):
             tag.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
 
-    @action(detail=True, methods=['delete'], url_path='notes/(?P<note_id>[^/.]+)')
-    def delete_note(self, request, pk=None, note_id=None):
+    @action(detail=True, methods=['put', 'delete'], url_path='notes/(?P<note_id>[^/.]+)')
+    def handle_note(self, request, pk=None, note_id=None):
         creator = self.get_object()
         note = get_object_or_404(Note, id=note_id, creator=creator)
-        note.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        if request.method == 'PUT':
+            serializer = NoteSerializer(note, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        elif request.method == 'DELETE':
+            note.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class TeamViewSet(viewsets.ModelViewSet):
@@ -213,9 +220,16 @@ class TeamViewSet(viewsets.ModelViewSet):
             tag.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
 
-    @action(detail=True, methods=['delete'], url_path='notes/(?P<note_id>[^/.]+)')
-    def delete_note(self, request, pk=None, note_id=None):
+    @action(detail=True, methods=['put', 'delete'], url_path='notes/(?P<note_id>[^/.]+)')
+    def handle_note(self, request, pk=None, note_id=None):
         team = self.get_object()
         note = get_object_or_404(TeamNote, id=note_id, team=team)
-        note.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        if request.method == 'PUT':
+            serializer = TeamNoteSerializer(note, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        elif request.method == 'DELETE':
+            note.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)

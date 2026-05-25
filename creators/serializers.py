@@ -35,10 +35,14 @@ class CreatorDetailSerializer(serializers.ModelSerializer):
     social_links = SocialLinkSerializer(many=True, read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     notes = NoteSerializer(many=True, read_only=True)
+    teams = serializers.SerializerMethodField()
+
+    def get_teams(self, obj):
+        return [{"id": t.id, "name": t.name} for t in obj.teams.all()]
 
     class Meta:
         model = Creator
-        fields = ['id', 'name', 'username', 'email', 'address', 'source', 'created_at', 'updated_at', 'social_links', 'tags', 'notes']
+        fields = ['id', 'name', 'username', 'email', 'address', 'source', 'created_at', 'updated_at', 'social_links', 'tags', 'notes', 'teams']
 
 
 class CreatorWriteSerializer(serializers.ModelSerializer):

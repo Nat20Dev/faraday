@@ -203,6 +203,17 @@ class CreatorAPITests(APITestCase):
         response = self.client.get(self.list_url)
         self.assertNotIn("address", response.json()[0])
 
+    def test_detail_includes_teams(self):
+        creator = Creator.objects.create(name="Alice", username="alice")
+        team = Team.objects.create(name="Brand Team")
+        team.members.add(creator)
+        url = reverse("creator-detail", args=[creator.id])
+        response = self.client.get(url)
+        self.assertIn("teams", response.json())
+        self.assertEqual(len(response.json()["teams"]), 1)
+        self.assertEqual(response.json()["teams"][0]["id"], team.id)
+        self.assertEqual(response.json()["teams"][0]["name"], "Brand Team")
+
 
 class SocialLinkAPITests(APITestCase):
     def setUp(self):
@@ -338,15 +349,31 @@ class NoteAPITests(APITestCase):
         self.assertEqual(response.json()[0]["content"], "Second")
         self.assertEqual(response.json()[1]["content"], "First")
 
+    def test_update_note(self):
+        note = Note.objects.create(creator=self.creator, content="Original")
+        url = reverse("creator-handle-note", args=[self.creator.id, note.id])
+        data = {"content": "Updated"}
+        response = self.client.put(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["content"], "Updated")
+        note.refresh_from_db()
+        self.assertEqual(note.content, "Updated")
+
+    def test_update_note_nonexistent(self):
+        url = reverse("creator-handle-note", args=[self.creator.id, 9999])
+        data = {"content": "Updated"}
+        response = self.client.put(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
     def test_delete_note(self):
         note = Note.objects.create(creator=self.creator, content="Test")
-        url = reverse("creator-delete-note", args=[self.creator.id, note.id])
+        url = reverse("creator-handle-note", args=[self.creator.id, note.id])
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(Note.objects.count(), 0)
 
     def test_delete_note_nonexistent(self):
-        url = reverse("creator-delete-note", args=[self.creator.id, 9999])
+        url = reverse("creator-handle-note", args=[self.creator.id, 9999])
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
@@ -663,15 +690,31 @@ class TeamNoteAPITests(APITestCase):
         self.assertEqual(response.json()[0]["content"], "Second")
         self.assertEqual(response.json()[1]["content"], "First")
 
+    def test_update_team_note(self):
+        note = TeamNote.objects.create(team=self.team, content="Original")
+        url = reverse("team-handle-note", args=[self.team.id, note.id])
+        data = {"content": "Updated"}
+        response = self.client.put(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["content"], "Updated")
+        note.refresh_from_db()
+        self.assertEqual(note.content, "Updated")
+
+    def test_update_team_note_nonexistent(self):
+        url = reverse("team-handle-note", args=[self.team.id, 9999])
+        data = {"content": "Updated"}
+        response = self.client.put(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
     def test_delete(self):
         note = TeamNote.objects.create(team=self.team, content="Test")
-        url = reverse("team-delete-note", args=[self.team.id, note.id])
+        url = reverse("team-handle-note", args=[self.team.id, note.id])
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(TeamNote.objects.count(), 0)
 
     def test_delete_nonexistent(self):
-        url = reverse("team-delete-note", args=[self.team.id, 9999])
+        url = reverse("team-handle-note", args=[self.team.id, 9999])
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
