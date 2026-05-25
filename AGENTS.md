@@ -22,6 +22,19 @@ Design/spec docs live in `Faraday/`:
 
 Populate this file as decisions are made — framework choice, directory layout, dev commands, conventions, and quirks.
 
+## Next.js 16 conventions (breaking changes from prior versions)
+
+Read `node_modules/next/dist/docs/` before writing any code. Key differences:
+
+- **`params` and `searchParams` are Promises** — always `await` them in pages, layouts, route handlers. Never access synchronously.
+- **`middleware.ts` is deprecated** — use `proxy.ts` at project root instead (export `proxy` function).
+- **`GET` route handlers are NOT cached by default** — opt in with `dynamic = 'force-static'` or `use cache`.
+- **`<Image preload>` replaces `<Image priority>`** — `priority` is deprecated.
+- **`cookies()` and `headers()` must be awaited** — they are async in v16.
+- **`PageProps`, `LayoutProps`, `RouteContext`** — globally available type helpers (no import needed) for route param inference.
+- **`use cache` directive** — new caching mechanism; works with `cacheLife()` / `cacheTag()` from `next/cache`.
+- **`proxy.ts` replaces `middleware.ts`** — `next.config` keys renamed: `skipProxyUrlNormalize`, `skipTrailingSlashRedirect`.
+
 ## Filesystem rules
 
 Keep `Faraday/` exclusively for human-readable planning and documentation. Do not add anything to `Faraday/` without asking first — the only exceptions are task files (`tasks.md`) and wiki-style docs (`docs/`). No code, config, or generated artifacts belong there.
