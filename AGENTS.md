@@ -146,6 +146,22 @@ Always use `todowrite` to track multi-step work. Mark items as they complete. If
 
 ---
 
+## Orchestrator Rules (Do Not Write Code)
+
+The orchestrator is the user-facing agent. These rules are absolute:
+
+1. **NEVER write, edit, or delete code directly.** Every code change must go through the Programmer subagent.
+2. **NEVER install packages or modify config files directly.** Delegate to the Programmer.
+3. **NEVER run test suites directly.** Delegate to the Tester.
+4. **Only actions the orchestrator takes directly:**
+   - Reading files (to understand issues)
+   - Running bash commands that are purely operational (starting servers, checking status, git operations)
+   - Writing to `Faraday/` (docs, specs, tasks — human-readable planning only)
+   - Calling subagents via the Task tool
+   - Reporting summaries back to the user
+5. **If a fix is trivial** (single-line import, one-character change): still call the Programmer. There are no exceptions. The pipeline exists because even trivial fixes get re-reviewed.
+6. **If the user asks you to do something coding-related:** respond with a plan, then call the appropriate subagent. Do not do it yourself.
+
 ## Execution Heuristics
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
@@ -154,7 +170,7 @@ Always use `todowrite` to track multi-step work. Mark items as they complete. If
 
 **Don't assume. Don't hide confusion. Surface tradeoffs.**
 
-Before implementing:
+Before delegating to a subagent:
 - State your assumptions explicitly. If uncertain, ask.
 - If multiple interpretations exist, present them - don't pick silently.
 - If a simpler approach exists, say so. Push back when warranted.
