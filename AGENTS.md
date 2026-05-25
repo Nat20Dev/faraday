@@ -20,6 +20,61 @@ Design/spec docs live in `Faraday/`:
 - `tasks.md` (generated inside `Faraday/`) — ordered tasks with success criteria (created by Program Manager agent)
 - `Faraday/docs/` — wiki-style documentation (created by Documentation agent)
 
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Backend | Django 5.2 + Django REST Framework |
+| Frontend | Next.js 16 (App Router, TypeScript, Tailwind CSS) |
+| Database | PostgreSQL 16 |
+| ORM | Django ORM |
+| Containerization | Docker Compose |
+
+## Project Structure
+
+```
+faraday/
+├── backend/           # Django project (Django 5.2 + DRF)
+│   ├── settings.py    # Django settings (uses env vars for DB config)
+│   ├── urls.py        # Root URL conf → includes api/
+│   ├── manage.py      # Django CLI entry point
+│   ├── requirements.txt
+│   └── Dockerfile
+├── frontend/          # Next.js 16 (consumes Django REST API)
+│   ├── src/app/       # App Router pages
+│   ├── package.json
+│   └── next.config.ts
+├── creators/          # Django app — all CRM models/views
+│   ├── models.py      # Creator, SocialLink, Tag, Note
+│   ├── serializers.py # DRF serializers
+│   ├── views.py       # DRF ViewSets
+│   └── admin.py
+├── docker-compose.yml # PostgreSQL + backend services
+├── .env               # Local env vars (gitignored)
+├── .env.example       # Documented env vars
+└── Faraday/           # Obsidian symlink — planning docs only
+```
+
+## Dev Commands
+
+```bash
+# Start PostgreSQL
+docker compose up -d db
+
+# Start Django backend
+python3 backend/manage.py runserver  # → localhost:8000
+
+# Start Next.js frontend (separate terminal)
+npm run dev  # in frontend/ → localhost:3000
+
+# Django migrations
+python3 backend/manage.py makemigrations
+python3 backend/manage.py migrate
+
+# Admin panel
+open http://localhost:8000/admin/
+```
+
 Populate this file as decisions are made — framework choice, directory layout, dev commands, conventions, and quirks.
 
 ## Next.js 16 conventions (breaking changes from prior versions)
