@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import SocialLinksField from "./SocialLinksField";
 import TagsField from "./TagsField";
-import type { Creator } from "@/types/creator";
+import type { Creator, LinkEntry, TagEntry } from "@/types/creator";
 
 interface FormData {
   name: string;
@@ -12,18 +12,6 @@ interface FormData {
   email: string;
   address: string;
   source: string;
-}
-
-interface LinkEntry {
-  platform: string;
-  url: string;
-  key: number;
-}
-
-interface TagEntry {
-  key: string;
-  value: string;
-  uid: number;
 }
 
 interface Errors {
@@ -47,11 +35,11 @@ export default function CreatorForm({ creator }: { creator?: Creator }) {
   });
 
   const [socialLinks, setSocialLinks] = useState<LinkEntry[]>(
-    creator?.social_links?.map((l) => ({ platform: l.platform, url: l.url, key: l.id })) || []
+    creator?.social_links?.map((l) => ({ id: l.id, platform: l.platform, url: l.url, key: l.id })) || []
   );
 
   const [tags, setTags] = useState<TagEntry[]>(
-    creator?.tags?.map((t) => ({ key: t.key, value: t.value || "", uid: t.id })) || []
+    creator?.tags?.map((t) => ({ id: t.id, key: t.key, value: t.value || "", uid: t.id })) || []
   );
 
   const [errors, setErrors] = useState<Errors>({});
@@ -106,32 +94,67 @@ export default function CreatorForm({ creator }: { creator?: Creator }) {
       }
 
       const saved = await res.json();
+      const savedId = saved.id;
 
-      if (socialLinks.length > 0) {
-        for (const link of socialLinks) {
-          if (link.url) {
-            await fetch(`/api/creators/${saved.id}/social_links/`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ platform: link.platform, url: link.url }),
-            });
+      const originalLinkIds = new Set(creator?.social_links?.map((l) => l.id) || []);
+      const currentLinkIds = new Set(socialLinks.filter((l) => l.id !== null).map((l) => l.id as number));
+
+      for (const origId of originalLinkIds) {
+        if (!currentLinkIds.has(origId)) {
+          const delRes = await fetch(`/api/creators/${savedId}/social_links/${origId}/`, { method: "DELETE" });
+          if (!delRes.ok) {
+            setErrors({ general: "Failed to remove a social link." });
+            setSubmitting(false);
+            return;
           }
         }
       }
 
-      if (tags.length > 0) {
-        for (const tag of tags) {
-          if (tag.key) {
-            await fetch(`/api/creators/${saved.id}/tags/`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ key: tag.key, value: tag.value || null }),
-            });
+      for (const link of socialLinks) {
+        if (link.id === null && link.url) {
+          const postRes = await fetch(`/api/creators/${savedId}/social_links/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ platform: link.platform, url: link.url }),
+          });
+          if (!postRes.ok) {
+            setErrors({ general: "Failed to save a social link." });
+            setSubmitting(false);
+            return;
           }
         }
       }
 
-      router.push(`/creators/${saved.id}`);
+      const originalTagIds = new Set(creator?.tags?.map((t) => t.id) || []);
+      const currentTagIds = new Set(tags.filter((t) => t.id !== null).map((t) => t.id as number));
+
+      for (const origId of originalTagIds) {
+        if (!currentTagIds.has(origId)) {
+          const delRes = await fetch(`/api/creators/${savedId}/tags/${origId}/`, { method: "DELETE" });
+          if (!delRes.ok) {
+            setErrors({ general: "Failed to remove a tag." });
+            setSubmitting(false);
+            return;
+          }
+        }
+      }
+
+      for (const tag of tags) {
+        if (tag.id === null && tag.key) {
+          const postRes = await fetch(`/api/creators/${savedId}/tags/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ key: tag.key, value: tag.value || null }),
+          });
+          if (!postRes.ok) {
+            setErrors({ general: "Failed to save a tag." });
+            setSubmitting(false);
+            return;
+          }
+        }
+      }
+
+      router.push(`/creators/${savedId}`);
     } catch {
       setErrors({ general: "Network error. Please try again." });
       setSubmitting(false);

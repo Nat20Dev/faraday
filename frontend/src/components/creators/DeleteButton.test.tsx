@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import DeleteButton from "./DeleteButton";
 
@@ -8,15 +8,19 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
+const mockFetch = vi.fn();
+
+beforeEach(() => {
+  mockPush.mockClear();
+  mockFetch.mockReset();
+  globalThis.fetch = mockFetch;
+});
+
+afterEach(() => {
+  cleanup();
+});
+
 describe("DeleteButton", () => {
-  beforeEach(() => {
-    mockPush.mockClear();
-  });
-
-  afterEach(() => {
-    cleanup();
-  });
-
   it("renders delete button", () => {
     render(<DeleteButton creatorId={1} creatorName="Alice Chen" />);
     expect(screen.getByText("Delete")).toBeDefined();
@@ -34,6 +38,38 @@ describe("DeleteButton", () => {
     render(<DeleteButton creatorId={1} creatorName="Alice Chen" />);
     await userEvent.click(screen.getByRole("button", { name: /delete/i }));
     await userEvent.click(screen.getByText("Cancel"));
+    expect(screen.queryByText("Are you sure?")).toBeNull();
+  });
+
+  it("calls fetch DELETE on confirm and navigates to dashboard", async () => {
+    mockFetch.mockResolvedValue({ ok: true });
+    render(<DeleteButton creatorId={1} creatorName="Alice Chen" />);
+    await userEvent.click(screen.getByRole("button", { name: /delete/i }));
+    await userEvent.click(screen.getByText("Confirm"));
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith("/api/creators/1/", { method: "DELETE" });
+    });
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/dashboard");
+    });
+  });
+
+  it("shows Deleting... while delete request is in flight", async () => {
+    mockFetch.mockImplementation(() => new Promise(() => {}));
+    render(<DeleteButton creatorId={1} creatorName="Alice Chen" />);
+    await userEvent.click(screen.getByRole("button", { name: /delete/i }));
+    await userEvent.click(screen.getByText("Confirm"));
+    expect(await screen.findByText("Deleting...")).toBeDefined();
+  });
+
+  it("returns to initial state on API error", async () => {
+    mockFetch.mockRejectedValue(new Error("Network error"));
+    render(<DeleteButton creatorId={1} creatorName="Alice Chen" />);
+    await userEvent.click(screen.getByRole("button", { name: /delete/i }));
+    await userEvent.click(screen.getByText("Confirm"));
+    await waitFor(() => {
+      expect(screen.getByText("Delete")).toBeDefined();
+    });
     expect(screen.queryByText("Are you sure?")).toBeNull();
   });
 });

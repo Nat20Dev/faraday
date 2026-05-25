@@ -1,14 +1,9 @@
 "use client";
 
 import { X, Plus } from "lucide-react";
+import type { LinkEntry } from "@/types/creator";
 
 const PLATFORMS = ["INSTAGRAM", "TIKTOK", "YOUTUBE", "TWITCH", "BLUESKY"];
-
-interface LinkEntry {
-  platform: string;
-  url: string;
-  key: number;
-}
 
 export default function SocialLinksField({
   links,
@@ -18,7 +13,7 @@ export default function SocialLinksField({
   onChange: (links: LinkEntry[]) => void;
 }) {
   function add() {
-    onChange([...links, { platform: PLATFORMS[0], url: "", key: Date.now() }]);
+    onChange([...links, { id: null, platform: PLATFORMS[0], url: "", key: Date.now() }]);
   }
 
   function remove(key: number) {

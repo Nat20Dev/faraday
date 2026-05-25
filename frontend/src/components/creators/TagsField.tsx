@@ -1,12 +1,7 @@
 "use client";
 
 import { X, Plus } from "lucide-react";
-
-interface TagEntry {
-  key: string;
-  value: string;
-  uid: number;
-}
+import type { TagEntry } from "@/types/creator";
 
 export default function TagsField({
   tags,
@@ -16,7 +11,7 @@ export default function TagsField({
   onChange: (tags: TagEntry[]) => void;
 }) {
   function add() {
-    onChange([...tags, { key: "", value: "", uid: Date.now() }]);
+    onChange([...tags, { id: null, key: "", value: "", uid: Date.now() }]);
   }
 
   function remove(uid: number) {

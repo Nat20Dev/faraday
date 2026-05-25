@@ -2,22 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Search, Plus, ExternalLink } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 import type { Creator } from "@/types/creator";
-
-const PLATFORM_ICONS: Record<string, string> = {
-  INSTAGRAM: "📸",
-  TIKTOK: "🎵",
-  YOUTUBE: "▶️",
-  TWITCH: "📺",
-  BLUESKY: "🦋",
-};
-
-const SOURCE_STYLES: Record<string, string> = {
-  MANUAL_ENTRY: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
-  EVENT: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-  CAMPAIGN: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-};
+import { PLATFORM_ICONS, SOURCE_STYLES } from "@/types/creator";
 
 function SourceBadge({ source }: { source: string }) {
   const labels: Record<string, string> = {
