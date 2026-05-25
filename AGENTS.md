@@ -16,8 +16,9 @@ Design/spec docs live in `Faraday/`:
 - `High Level Specs.md` — CRM, contract/project manager, and marketplace goals
 - `Design Things to Add.md` — reminder list of pending features (dark mode, CSV upload, etc.)
 - `project_definition.md` — reserved for a formal definition (currently empty)
-- `agent_prompts.md` — prompts for the 5-agent development pipeline
+- `agent_prompts.md` — prompts for the 7-agent development pipeline
 - `tasks.md` (generated inside `Faraday/`) — ordered tasks with success criteria (created by Program Manager agent)
+- `Faraday/designs/` — UI/UX design specs (created by UI/UX Designer agent)
 - `Faraday/docs/` — wiki-style documentation (created by Documentation agent)
 
 ## Tech Stack
@@ -92,7 +93,7 @@ Read `node_modules/next/dist/docs/` before writing any code. Key differences:
 
 ## Filesystem rules
 
-Keep `Faraday/` exclusively for human-readable planning and documentation. Do not add anything to `Faraday/` without asking first — the only exceptions are task files (`tasks.md`) and wiki-style docs (`docs/`). No code, config, or generated artifacts belong there.
+Keep `Faraday/` exclusively for human-readable planning and documentation. Do not add anything to `Faraday/` without asking first — the only exceptions are task files (`tasks.md`), UI/UX design specs (`designs/`), and wiki-style docs (`docs/`). No code, config, or generated artifacts belong there.
 
 ## Execution Heuristics
 
