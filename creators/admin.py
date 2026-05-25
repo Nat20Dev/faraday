@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Creator, SocialLink, Tag, Note
+from .models import Creator, SocialLink, Tag, Note, Team, TeamSocialLink, TeamTag, TeamNote
 
 
 class SocialLinkInline(admin.TabularInline):
@@ -40,3 +40,30 @@ class TagAdmin(admin.ModelAdmin):
 @admin.register(Note)
 class NoteAdmin(admin.ModelAdmin):
     list_display = ['content', 'creator', 'created_at']
+
+
+@admin.register(Team)
+class TeamAdmin(admin.ModelAdmin):
+    list_display = ['name', 'source', 'member_count', 'created_at']
+    list_filter = ['source']
+    search_fields = ['name']
+
+    def member_count(self, obj):
+        return obj.members.count()
+    member_count.short_description = 'Members'
+
+
+@admin.register(TeamSocialLink)
+class TeamSocialLinkAdmin(admin.ModelAdmin):
+    list_display = ['platform', 'handle', 'team', 'created_at']
+    list_filter = ['platform']
+
+
+@admin.register(TeamTag)
+class TeamTagAdmin(admin.ModelAdmin):
+    list_display = ['key', 'value', 'team', 'created_at']
+
+
+@admin.register(TeamNote)
+class TeamNoteAdmin(admin.ModelAdmin):
+    list_display = ['content', 'team', 'created_at']

@@ -125,14 +125,15 @@ export default function CreatorTable({ creators }: { creators: Creator[] }) {
 
           <div className="md:hidden flex flex-col gap-3">
             {filtered.map((creator) => (
-              <Link
+              <div
                 key={creator.id}
-                href={`/creators/${creator.id}`}
-                className="block rounded-lg border border-zinc-200 dark:border-zinc-800 p-4 hover:bg-zinc-50 dark:hover:bg-zinc-900/30 transition-colors"
+                className="rounded-lg border border-zinc-200 dark:border-zinc-800 p-4 hover:bg-zinc-50 dark:hover:bg-zinc-900/30 transition-colors"
               >
                 <div className="flex items-start justify-between mb-2">
                   <div>
-                    <div className="font-medium text-emerald-600 dark:text-emerald-400">{creator.name}</div>
+                    <Link href={`/creators/${creator.id}`} className="font-medium text-emerald-600 dark:text-emerald-400 hover:underline">
+                      {creator.name}
+                    </Link>
                     <div className="text-sm text-zinc-500 dark:text-zinc-400">@{creator.username}</div>
                   </div>
                   <SourceBadge source={creator.source} />
@@ -141,7 +142,7 @@ export default function CreatorTable({ creators }: { creators: Creator[] }) {
                   <div className="text-sm text-zinc-500 dark:text-zinc-400 mb-2">{creator.email}</div>
                 )}
                 <SocialIcons links={creator.social_links} />
-              </Link>
+              </div>
             ))}
           </div>
         </>

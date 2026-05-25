@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from creators.models import Creator, SocialLink, Tag, Note
+from creators.models import Creator, SocialLink, Tag, Note, Team, TeamSocialLink, TeamTag, TeamNote
 
 
 SEED_CREATORS = [
@@ -109,6 +109,34 @@ SEED_NOTES = [
 ]
 
 
+SEED_TEAMS = [
+    {
+        "name": "Content Collective",
+        "email": "hello@contentcollective.gg",
+        "address": "Suite 200, 500 Media Blvd, Los Angeles, CA 90001",
+        "source": "MANUAL_ENTRY",
+        "members": ["alicechen", "marcus_r", "yuki_tanaka"],
+    },
+]
+
+SEED_TEAM_SOCIAL_LINKS = [
+    {"team_name": "Content Collective", "platform": "YOUTUBE", "url": "https://youtube.com/@contentcollective", "handle": "Content Collective"},
+    {"team_name": "Content Collective", "platform": "INSTAGRAM", "url": "https://instagram.com/contentcollective", "handle": "contentcollective"},
+    {"team_name": "Content Collective", "platform": "TWITCH", "url": "https://twitch.tv/contentcollective", "handle": "contentcollective"},
+]
+
+SEED_TEAM_TAGS = [
+    {"team_name": "Content Collective", "key": "tier", "value": "platinum"},
+    {"team_name": "Content Collective", "key": "niche", "value": "variety"},
+    {"team_name": "Content Collective", "key": "focus", "value": "brand_deals"},
+]
+
+SEED_TEAM_NOTES = [
+    {"team_name": "Content Collective", "content": "Content Collective is a group of 3 variety streamers focused on gaming and music content."},
+    {"team_name": "Content Collective", "content": "Negotiating a joint brand deal with a peripheral company — all 3 members included."},
+]
+
+
 class Command(BaseCommand):
     help = "Seeds the database with synthetic test data"
 
@@ -117,7 +145,11 @@ class Command(BaseCommand):
         self._seed_social_links()
         self._seed_tags()
         self._seed_notes()
-        self.stdout.write(self.style.SUCCESS(f"Seeded {Creator.objects.count()} creators with social links, tags, and notes."))
+        self._seed_teams()
+        self._seed_team_social_links()
+        self._seed_team_tags()
+        self._seed_team_notes()
+        self.stdout.write(self.style.SUCCESS(f"Seeded {Creator.objects.count()} creators and {Team.objects.count()} teams with social links, tags, and notes."))
 
     def _seed_creators(self):
         for data in SEED_CREATORS:
@@ -157,3 +189,46 @@ class Command(BaseCommand):
             Note.objects.create(creator=creator, content=data["content"])
             count += 1
         self.stdout.write(f"  ✓ Created {count} notes")
+
+    def _seed_teams(self):
+        for data in SEED_TEAMS:
+            members = data.pop("members")
+            team, _ = Team.objects.get_or_create(name=data["name"], defaults=data)
+            for username in members:
+                creator = Creator.objects.get(username=username)
+                team.members.add(creator)
+        self.stdout.write(f"  ✓ Created {len(SEED_TEAMS)} teams with members")
+
+    def _seed_team_social_links(self):
+        count = 0
+        for data in SEED_TEAM_SOCIAL_LINKS:
+            team = Team.objects.get(name=data["team_name"])
+            _, created = TeamSocialLink.objects.get_or_create(
+                team=team,
+                platform=data["platform"],
+                defaults={"url": data["url"], "handle": data["handle"]},
+            )
+            if created:
+                count += 1
+        self.stdout.write(f"  ✓ Created {count} team social links")
+
+    def _seed_team_tags(self):
+        count = 0
+        for data in SEED_TEAM_TAGS:
+            team = Team.objects.get(name=data["team_name"])
+            _, created = TeamTag.objects.get_or_create(
+                team=team,
+                key=data["key"],
+                defaults={"value": data["value"]},
+            )
+            if created:
+                count += 1
+        self.stdout.write(f"  ✓ Created {count} team tags")
+
+    def _seed_team_notes(self):
+        count = 0
+        for data in SEED_TEAM_NOTES:
+            team = Team.objects.get(name=data["team_name"])
+            TeamNote.objects.create(team=team, content=data["content"])
+            count += 1
+        self.stdout.write(f"  ✓ Created {count} team notes")

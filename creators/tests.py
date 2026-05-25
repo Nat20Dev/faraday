@@ -3,7 +3,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from django.urls import reverse
 
-from .models import Creator, SocialLink, Tag, Note
+from .models import Creator, SocialLink, Tag, Note, Team, TeamSocialLink, TeamTag, TeamNote
 
 
 class CreatorModelTests(TestCase):
@@ -384,3 +384,322 @@ class CrossCreatorIsolationTests(APITestCase):
         url = reverse("creator-notes", args=[c2.id])
         response = self.client.get(url)
         self.assertEqual(len(response.json()), 0)
+
+
+class TeamModelTests(TestCase):
+    def test_create_team(self):
+        team = Team.objects.create(name="Marketing Team")
+        self.assertEqual(team.name, "Marketing Team")
+        self.assertEqual(team.source, Team.Source.MANUAL_ENTRY)
+        self.assertIsNone(team.email)
+        self.assertIsNone(team.address)
+
+    def test_team_str(self):
+        team = Team.objects.create(name="PR Team")
+        self.assertEqual(str(team), "PR Team")
+
+    def test_team_members(self):
+        team = Team.objects.create(name="Content Team")
+        c1 = Creator.objects.create(name="Alice", username="alice")
+        c2 = Creator.objects.create(name="Bob", username="bob")
+        team.members.add(c1, c2)
+        self.assertEqual(team.members.count(), 2)
+
+    def test_team_ordering(self):
+        t1 = Team.objects.create(name="Team A")
+        t2 = Team.objects.create(name="Team B")
+        self.assertEqual(list(Team.objects.all()), [t2, t1])
+
+
+class TeamSocialLinkModelTests(TestCase):
+    def setUp(self):
+        self.team = Team.objects.create(name="Marketing Team")
+
+    def test_create_team_social_link(self):
+        link = TeamSocialLink.objects.create(
+            team=self.team,
+            platform=TeamSocialLink.Platform.INSTAGRAM,
+            url="https://instagram.com/team",
+            handle="team_handle",
+        )
+        self.assertEqual(link.platform, "INSTAGRAM")
+        self.assertEqual(link.handle, "team_handle")
+
+    def test_unique_platform_per_team(self):
+        TeamSocialLink.objects.create(
+            team=self.team,
+            platform=TeamSocialLink.Platform.INSTAGRAM,
+            url="https://instagram.com/team",
+        )
+        with self.assertRaises(Exception):
+            TeamSocialLink.objects.create(
+                team=self.team,
+                platform=TeamSocialLink.Platform.INSTAGRAM,
+                url="https://instagram.com/team2",
+            )
+
+    def test_cascade_delete(self):
+        TeamSocialLink.objects.create(
+            team=self.team,
+            platform=TeamSocialLink.Platform.INSTAGRAM,
+            url="https://instagram.com/team",
+        )
+        self.team.delete()
+        self.assertEqual(TeamSocialLink.objects.count(), 0)
+
+
+class TeamTagModelTests(TestCase):
+    def setUp(self):
+        self.team = Team.objects.create(name="Marketing Team")
+
+    def test_create_team_tag(self):
+        tag = TeamTag.objects.create(team=self.team, key="department", value="marketing")
+        self.assertEqual(tag.key, "department")
+        self.assertEqual(tag.value, "marketing")
+
+    def test_unique_key_per_team(self):
+        TeamTag.objects.create(team=self.team, key="department", value="marketing")
+        with self.assertRaises(Exception):
+            TeamTag.objects.create(team=self.team, key="department", value="sales")
+
+
+class TeamNoteModelTests(TestCase):
+    def setUp(self):
+        self.team = Team.objects.create(name="Marketing Team")
+
+    def test_create_team_note(self):
+        note = TeamNote.objects.create(team=self.team, content="Important note")
+        self.assertEqual(note.content, "Important note")
+
+    def test_ordering(self):
+        n1 = TeamNote.objects.create(team=self.team, content="First")
+        n2 = TeamNote.objects.create(team=self.team, content="Second")
+        self.assertEqual(list(TeamNote.objects.all()), [n2, n1])
+
+
+class TeamAPITests(APITestCase):
+    def setUp(self):
+        self.list_url = reverse("team-list")
+
+    def test_list_empty(self):
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json(), [])
+
+    def test_create_team(self):
+        data = {"name": "Marketing Team"}
+        response = self.client.post(self.list_url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.json()["name"], "Marketing Team")
+        self.assertEqual(Team.objects.count(), 1)
+
+    def test_create_team_missing_name(self):
+        data = {}
+        response = self.client.post(self.list_url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_retrieve_team(self):
+        team = Team.objects.create(name="Marketing Team")
+        url = reverse("team-detail", args=[team.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["name"], "Marketing Team")
+
+    def test_retrieve_nonexistent(self):
+        url = reverse("team-detail", args=[9999])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_update_team(self):
+        team = Team.objects.create(name="Marketing Team")
+        url = reverse("team-detail", args=[team.id])
+        data = {"name": "Marketing Team Updated"}
+        response = self.client.put(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["name"], "Marketing Team Updated")
+
+    def test_delete_team(self):
+        team = Team.objects.create(name="Marketing Team")
+        url = reverse("team-detail", args=[team.id])
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(Team.objects.count(), 0)
+
+    def test_detail_includes_members(self):
+        team = Team.objects.create(name="Marketing Team")
+        creator = Creator.objects.create(name="Alice", username="alice")
+        team.members.add(creator)
+        url = reverse("team-detail", args=[team.id])
+        response = self.client.get(url)
+        self.assertIn("members", response.json())
+        self.assertIn(creator.id, response.json()["members"])
+
+    def test_list_includes_member_count(self):
+        team = Team.objects.create(name="Marketing Team")
+        creator = Creator.objects.create(name="Alice", username="alice")
+        team.members.add(creator)
+        response = self.client.get(self.list_url)
+        self.assertIn("member_count", response.json()[0])
+        self.assertEqual(response.json()[0]["member_count"], 1)
+
+
+class TeamSocialLinkAPITests(APITestCase):
+    def setUp(self):
+        self.team = Team.objects.create(name="Marketing Team")
+
+    def test_list_empty(self):
+        url = reverse("team-social-links", args=[self.team.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json(), [])
+
+    def test_create(self):
+        url = reverse("team-social-links", args=[self.team.id])
+        data = {
+            "platform": "INSTAGRAM",
+            "url": "https://instagram.com/team",
+            "handle": "team_handle",
+        }
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.json()["platform"], "INSTAGRAM")
+
+    def test_invalid_platform(self):
+        url = reverse("team-social-links", args=[self.team.id])
+        data = {"platform": "INVALID", "url": "https://example.com"}
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_duplicate(self):
+        url = reverse("team-social-links", args=[self.team.id])
+        data = {
+            "platform": "INSTAGRAM",
+            "url": "https://instagram.com/team",
+        }
+        self.client.post(url, data, format="json")
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_delete(self):
+        link = TeamSocialLink.objects.create(
+            team=self.team,
+            platform=TeamSocialLink.Platform.INSTAGRAM,
+            url="https://instagram.com/team",
+        )
+        url = reverse("team-delete-social-link", args=[self.team.id, link.id])
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(TeamSocialLink.objects.count(), 0)
+
+    def test_delete_nonexistent(self):
+        url = reverse("team-delete-social-link", args=[self.team.id, 9999])
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class TeamTagAPITests(APITestCase):
+    def setUp(self):
+        self.team = Team.objects.create(name="Marketing Team")
+
+    def test_list_empty(self):
+        url = reverse("team-tags", args=[self.team.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json(), [])
+
+    def test_create(self):
+        url = reverse("team-tags", args=[self.team.id])
+        data = {"key": "department", "value": "marketing"}
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.json()["key"], "department")
+        self.assertEqual(response.json()["value"], "marketing")
+
+    def test_update(self):
+        tag = TeamTag.objects.create(team=self.team, key="department", value="marketing")
+        url = reverse("team-handle-tag", args=[self.team.id, tag.id])
+        data = {"value": "sales"}
+        response = self.client.put(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["value"], "sales")
+
+    def test_delete(self):
+        tag = TeamTag.objects.create(team=self.team, key="department", value="marketing")
+        url = reverse("team-handle-tag", args=[self.team.id, tag.id])
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(TeamTag.objects.count(), 0)
+
+    def test_duplicate_key(self):
+        url = reverse("team-tags", args=[self.team.id])
+        data = {"key": "department", "value": "marketing"}
+        self.client.post(url, data, format="json")
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class TeamNoteAPITests(APITestCase):
+    def setUp(self):
+        self.team = Team.objects.create(name="Marketing Team")
+
+    def test_list_empty(self):
+        url = reverse("team-notes", args=[self.team.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json(), [])
+
+    def test_create(self):
+        url = reverse("team-notes", args=[self.team.id])
+        data = {"content": "Important team note"}
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.json()["content"], "Important team note")
+
+    def test_ordering(self):
+        url = reverse("team-notes", args=[self.team.id])
+        self.client.post(url, {"content": "First"}, format="json")
+        self.client.post(url, {"content": "Second"}, format="json")
+        response = self.client.get(url)
+        self.assertEqual(response.json()[0]["content"], "Second")
+        self.assertEqual(response.json()[1]["content"], "First")
+
+    def test_delete(self):
+        note = TeamNote.objects.create(team=self.team, content="Test")
+        url = reverse("team-delete-note", args=[self.team.id, note.id])
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(TeamNote.objects.count(), 0)
+
+    def test_delete_nonexistent(self):
+        url = reverse("team-delete-note", args=[self.team.id, 9999])
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class TeamMembersAPITests(APITestCase):
+    def setUp(self):
+        self.team = Team.objects.create(name="Marketing Team")
+        self.creator = Creator.objects.create(name="Alice", username="alice")
+        self.url = reverse("team-members", args=[self.team.id])
+
+    def test_add_member(self):
+        response = self.client.post(self.url, {"creator_id": self.creator.id}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn(self.creator.id, self.team.members.all().values_list("id", flat=True))
+
+    def test_add_member_twice(self):
+        self.team.members.add(self.creator)
+        response = self.client.post(self.url, {"creator_id": self.creator.id}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.team.members.count(), 1)
+
+    def test_remove_member(self):
+        self.team.members.add(self.creator)
+        response = self.client.delete(self.url, {"creator_id": self.creator.id}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(self.team.members.count(), 0)
+
+    def test_remove_member_not_in_team(self):
+        response = self.client.delete(self.url, {"creator_id": self.creator.id}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(self.team.members.count(), 0)
