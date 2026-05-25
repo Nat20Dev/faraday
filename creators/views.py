@@ -2,7 +2,6 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-
 from .models import Creator, SocialLink, Tag, Note
 from .serializers import (
     CreatorListSerializer,
@@ -37,6 +36,11 @@ class CreatorViewSet(viewsets.ModelViewSet):
         elif request.method == 'POST':
             serializer = SocialLinkSerializer(data=request.data)
             if serializer.is_valid():
+                if SocialLink.objects.filter(creator=creator, platform=request.data.get('platform')).exists():
+                    return Response(
+                        {'error': 'A social link with this platform already exists for this creator.'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
                 serializer.save(creator=creator)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -51,6 +55,11 @@ class CreatorViewSet(viewsets.ModelViewSet):
         elif request.method == 'POST':
             serializer = TagSerializer(data=request.data)
             if serializer.is_valid():
+                if Tag.objects.filter(creator=creator, key=request.data.get('key')).exists():
+                    return Response(
+                        {'error': 'A tag with this key already exists for this creator.'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
                 serializer.save(creator=creator)
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

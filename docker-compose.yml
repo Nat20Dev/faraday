@@ -13,9 +13,7 @@ services:
       - pgdata:/var/lib/postgresql/data
 
   backend:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    build: ./backend
     container_name: faraday-backend
     restart: unless-stopped
     ports:
