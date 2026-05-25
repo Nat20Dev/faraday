@@ -95,6 +95,52 @@ Read `node_modules/next/dist/docs/` before writing any code. Key differences:
 
 Keep `Faraday/` exclusively for human-readable planning and documentation. Do not add anything to `Faraday/` without asking first — the only exceptions are task files (`tasks.md`), UI/UX design specs (`designs/`), and wiki-style docs (`docs/`). No code, config, or generated artifacts belong there.
 
+## Subagent Workflow (Context Management)
+
+Use the Task tool to spin off agents rather than doing all roles in one context. Each subagent receives only the context it needs.
+
+### Agent → Subagent Mappings
+
+| Pipeline Role | Task `subagent_type` | Context passed in | Returns |
+|---|---|---|---|
+| **Program Manager** | `general` | High Level Specs.md, Design Things to Add.md, AGENTS.md | Updated `Faraday/tasks.md` |
+| **UI/UX Designer** | `general` | Task spec from tasks.md, existing design files, AGENTS.md | Design spec in `Faraday/designs/` |
+| **Programmer** | `general` | Task spec, design spec (if UI), relevant source files, AGENTS.md | Code changes, summary |
+| **Tester** | `general` | Task spec, modified source files, existing tests | Test results (written to tests files) |
+| **Adversarial Reviewer** | `general` | Task spec, code diff, test results, AGENTS.md | Review verdict (PASS/FAIL + issues) |
+| **Security Reviewer** | `general` | Task spec, final code, test results | Security verdict |
+| **Documentation** | `explore` | Codebase files, task specs, existing docs | Updated `Faraday/docs/` |
+
+### Orchestration Pattern
+
+```
+1. ORCHESTRATOR calls PM subagent → receives updated tasks.md
+2. If UI task: ORCHESTRATOR calls UI/UX Designer → receives design spec
+3. ORCHESTRATOR calls Programmer → receives code + summary
+4. ORCHESTRATOR calls Tester → receives test results
+5. Loop: if tests fail → ORCHESTRATOR calls Programmer (fix) → Tester (re-run)
+6. ORCHESTRATOR calls Adversarial Reviewer → receives verdict
+7. If FAIL → ORCHESTRATOR calls Programmer (fix issues) → restart loop
+8. If Security needed: ORCHESTRATOR calls Security Reviewer
+9. ORCHESTRATOR calls Documentation → receives updated docs
+10. ORCHESTRATOR commits and pushes
+```
+
+### Context Budget Rules
+
+- **PM agent:** Keep to High Level Specs + tasks.md only. Don't dump full codebase.
+- **UI/UX Designer:** Only needs the task description + visual design notes. No code.
+- **Programmer:** Task spec + design spec + relevant source files only. Not the whole codebase.
+- **Tester:** Task spec + modified source files + existing tests. Not the full app.
+- **Reviewers:** Task spec + diff of changed files + test output. Not full context.
+- **Documentation:** Use `explore` agent (has read-only tools) to traverse finished code.
+
+### Todo List Discipline
+
+Always use `todowrite` to track multi-step work. Mark items as they complete. If an agent returns a FAIL verdict, add a follow-up todo and loop.
+
+---
+
 ## Execution Heuristics
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
