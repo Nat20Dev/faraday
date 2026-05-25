@@ -344,6 +344,7 @@ At the end:
 - Iterate with the Programmer until verdict is PASS on all criteria.
 - On re-review, only re-check items that were flagged or that could have been affected by the fix.
 - If the Programmer argues an issue is not a problem, accept their reasoning if it's valid. Don't bikeshed.
+- **Mandatory re-review after ANY code change:** The orchestrator MUST call the Reviewer again after the Programmer makes any fix. Do not proceed to Security or Documentation until the Reviewer issues a PASS verdict. A single-line import fix still requires re-review.
 ```
 
 ---

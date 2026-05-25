@@ -120,11 +120,16 @@ Use the Task tool to spin off agents rather than doing all roles in one context.
 4. ORCHESTRATOR calls Tester → receives test results
 5. Loop: if tests fail → ORCHESTRATOR calls Programmer (fix) → Tester (re-run)
 6. ORCHESTRATOR calls Adversarial Reviewer → receives verdict
-7. If FAIL → ORCHESTRATOR calls Programmer (fix issues) → restart loop
-8. If Security needed: ORCHESTRATOR calls Security Reviewer
+7. If FAIL → ORCHESTRATOR calls Programmer (fix issues)
+   → MUST call Reviewer again (re-review on ALL code changes)
+   → If still FAIL → repeat loop
+8. If PASS → ORCHESTRATOR calls Security Reviewer (if needed)
 9. ORCHESTRATOR calls Documentation → receives updated docs
 10. ORCHESTRATOR commits and pushes
 ```
+
+> [!critical] Re-review rule
+> After ANY code change — even a single-line import fix — the orchestrator MUST call the Adversarial Reviewer again before proceeding. Do not skip to Security or Documentation. A changed line could introduce a new issue. The only exception is when the Tester's test-only changes (no source code modification) pass.
 
 ### Context Budget Rules
 
